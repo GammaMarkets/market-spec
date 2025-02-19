@@ -74,17 +74,17 @@ Merchants MAY specify preferences for how they want users to interact with them,
 - The merchant MUST publish a kind `31989` event recommending that application
 
 2. Payment Preferences:
-- Set via `payment-preference` tag in the merchant's kind `0` event
+- Set via `payment_preference` tag in the merchant's kind `0` event
 - Valid values: `manual | ecash | lud16` 
 - Defaults to `manual` if not specified
 
 Applications implementing this NIP MUST handle preferences as follows:
 
-1. When `payment-preference` is `manual`:
+1. When `payment_preference` is `manual`:
 - If merchant recommends an app: MUST direct users to that app
 - If no app recommendation: Use traditional interactive flow (buyer places order and waits for merchant's payment request)
 
-2. When `payment-preference` is `ecash` or `lud16`:
+2. When `payment_preference` is `ecash` or `lud16`:
 - If merchant recommends an app: SHOULD direct users there first, but they MAY also offer to continue if compatible with the payment preference
 - If no recommendations: Use specified payment method directly
 
@@ -772,9 +772,9 @@ Total Score = (Thumb × 0.5) + (0.5 × (∑(Category Ratings) ÷ Number of Categ
 ### Payment Flow Details
 
 #### Payment Preferences
-Merchants can specify their payment preferences in their kind:`0` event using the `payment-preference` tag:
+Merchants can specify their payment preferences in their kind:`0` event using the `payment_preference` tag:
 ```
-["payment-preference", "<manual | ecash | lud16>"]
+["payment_preference", "<manual | ecash | lud16>"]
 ```
 
 If not present, it defaults to `manual`. The preferences are processed in this order of complexity:
@@ -794,14 +794,14 @@ If not present, it defaults to `manual`. The preferences are processed in this o
 
 2. **Automatic Processing**
    - Buyer initiates payment request
-   - Requires a valid `payment-preference` in merchant's kind `0`
-   - Service-Based Processing processing if `payment-preference` is `manual` and the merchant have a recommended application
+   - Requires a valid `payment_preference` in merchant's kind `0`
+   - Service-Based Processing processing if `payment_preference` is `manual` and the merchant have a recommended application
    - Supports automatic payments via:
      - eCash tokens (locked to merchant's pubkey)
      - Lightning (using merchant's `lud16` address)
 
 3. **Service-Based Processing**
-   - Merchant MUST set `payment-preference` to `manual`
+   - Merchant MUST set `payment_preference` to `manual`
    - Merchant SHOULD have a [NIP-89](89.md) kind `31989` event recommending their preferred service
    - Buyers can immediately request payment using the service
    - Service handles payment details and completion monitoring
