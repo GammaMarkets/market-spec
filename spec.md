@@ -143,7 +143,7 @@ Products are the core element in a marketplace. Each product listing MUST contai
   - `t`: Product categories/tags, MAY appear multiple times
   - `a`: Product reference "30402:<pubkey>:<d-tag>", MUST appear only once to reference parent products in a variable/variation configuration
   - `a`: Collection reference "30405:<pubkey>:<d-tag>", MAY appear multiple times
-  - `shipping`: Shipping options, MAY appear multiple times
+  - `shipping_option`: Shipping options, MAY appear multiple times
     - Format: "30406:<pubkey>:<d-tag>" for direct options
     - Format: "30405:<pubkey>:<d-tag>" for collection shipping
     - `extra-cost`: Optional third element in the array, to add extra cost (in the product's currency) for the shipping method. In case of reference a collection the extra cost should be applied to all shipping options from the collection.
@@ -181,7 +181,7 @@ Products are the core element in a marketplace. Each product listing MUST contai
     ["t", "<category>"],
     
     // References
-    ["shipping", "<30406|30405>:<pubkey>:<d-tag>", "<extra-cost>"],  // Shipping options or collection, MAY appear multiple times
+    ["shipping_option", "<30406|30405>:<pubkey>:<d-tag>", "<extra-cost>"],  // Shipping options or collection, MAY appear multiple times
     ["a", "30405:<pubkey>:<d-tag>"]  // Product collection
   ]
 }
@@ -217,7 +217,7 @@ A specialized event type using [NIP-51](51.md) like list format to organize rela
 
 **Required tags**:
 - `d`: Unique collection identifier
-- `name`: Collection display name
+- `title`: Collection display name/title
 - `a`: Product references `["a", "30402:<pubkey>:<d-tag>"]`
   - Multiple product references allowed
   - References must point to valid product listings
@@ -232,7 +232,7 @@ A specialized event type using [NIP-51](51.md) like list format to organize rela
   - `g`: Geohash for precise location lookup
 
 - Reference Options:
-  - `shipping`: Available shipping options `["shipping", "30406:<pubkey>:<d-tag>"]`, MAY appear multiple times
+  - `shipping_option`: Available shipping options `["shipping_option", "30406:<pubkey>:<d-tag>"]`, MAY appear multiple times
 
 ```jsonc
 {
@@ -254,7 +254,7 @@ A specialized event type using [NIP-51](51.md) like list format to organize rela
     ["g", "<geohash>"],
     
     // Reference Options
-    ["shipping", "30406:<pubkey>:<d-tag>"],  // Available shipping options, MAY appear multiple times
+    ["shipping_option", "30406:<pubkey>:<d-tag>"],  // Available shipping options, MAY appear multiple times
   ]
 }
 ```
