@@ -8,8 +8,8 @@ A protocol specification for decentralized marketplaces on Nostr that provides a
 ## Table of Contents
 1. Protocol Requirements
 2. Core Protocol Components
-3. Events and Kinds
-4. Order Communication Flow and Payment Processing
+3. Product, Collection, and Shipping Events
+4. Order and Payment Processing
 5. Product Reviews
 6. Implementation Guidelines
 
@@ -21,7 +21,6 @@ The protocol defines both required core components and optional features to supp
 Implementations MUST support the following core features:
 
 - Product listing events (Kind: 30402)
-- Product collection events (Kind: 30405) for product-to-collection references
 - Merchant's preferences
 - Order communication and processing via [NIP-17](17.md) encrypted messages
 
@@ -30,20 +29,20 @@ These features MAY be implemented based on specific marketplace needs:
 
 - Extended product metadata
 - Shipping options (Kind: 30406)
-- Product collections (Kind: 30405) 
+- Product collections (Kind: 30405) for product-to-collection references
 - Drafts following [NIP-37](37.md)
 - Product reviews (Kind: 31555)
 - Service assisted order and payment processing
 
 #### Watch-only clients
-Watch-only clients are applications that allow users to display products without implementing full e-commerce capabilities. These clients don't need to support all required components - product rendering alone can be sufficient. However, ideally, they should also handle logic for looking up collections, reviews, and shipping options. Support for order communication using [NIP-17](17.md) is optional.
+Watch-only clients are applications that allow users to display products without implementing the full e-commerce capabilities. These clients don't need to support all required components - product rendering alone can be sufficient. However, ideally, they should also handle logic for looking up collections, reviews, and shipping options. Support for order communication using [NIP-17](17.md) is optional.
 
 ## 2. Core Protocol Components
 
 ### Core Flows
 1. Merchant Preferences
    - Application preferences via [NIP-89](89.md)
-   - Payment method preferences via kind `0` tags
+   - Payment method preferences via kind `0` metadata
 
 2. Order Processing
    - Encrypted buyer-seller communication
@@ -67,7 +66,7 @@ Standard e-commerce flow:
 7. Encrypted message follow-up
 
 ### Merchant Preferences
-Merchants MAY specify preferences for how they want users to interact with them, including which applications to use and payment methods to accept. These preferences ensure a consistent experience and streamline operations. Merchants indicate their preferences through two mechanisms:
+Merchants MAY specify preferences for how they want users to interact with them, including which applications to use and the payment method to accept. These preferences ensure a consistent experience and streamline operations. Merchants indicate their preferences through two mechanisms:
 
 1. Application Preferences ([NIP-89](89.md)):
 - The recommended application MUST publish a kind `31990` event
@@ -75,23 +74,22 @@ Merchants MAY specify preferences for how they want users to interact with them,
 
 2. Payment Preferences:
 - Set via `payment_preference` tag in the merchant's kind `0` event
-- Valid values: `manual | ecash | lud16` 
-- Defaults to `manual` if not specified
+- Valid values: `service | ecash | lightning | bitcoin` 
+- Defaults to `service` if not specified
 
 Applications implementing this NIP MUST handle preferences as follows:
 
-1. When `payment_preference` is `manual`:
+1. When `payment_preference` is `service`:
 - If merchant recommends an app: MUST direct users to that app
-- If no app recommendation: Use traditional interactive flow (buyer places order and waits for merchant's payment request)
+- If no app recommendation: Use direct or manual method
 
-2. When `payment_preference` is `ecash` or `lud16`:
+2. When `payment_preference` is `ecash`, `lightning`, or `bitcoin`:
 - If merchant recommends an app: SHOULD direct users there first, but they MAY also offer to continue if compatible with the payment preference
 - If no recommendations: Use specified payment method directly
 
 3. When no preferences are set:
-- Use traditional interactive flow
-   - Buyer sends order
-   - Wait for merchant's payment request
+- Direct method: Buyer immediately sends order and payment receipt
+- Manual method: Buyer sends order and awaits merchant's payment request
 
 Buyers can verify merchant preferences by:
 - Checking kind `31990` events for recommended applications
@@ -99,7 +97,7 @@ Buyers can verify merchant preferences by:
 
 This verification helps buyers follow merchant-approved paths and avoid potential scams or poor experiences.
 
-## 3. Events and Kinds
+## 3. Product, Collection, and Shipping Events
 
 ### Product Listing (Kind: 30402)
 
@@ -404,40 +402,39 @@ Standard Shipping:
    - Use geohash for distance-based sorting
    - Validate package constraints before offering options
 
-## 4. Order Communication Flow and Payment Processing
+## 4. Order and Payment Processing
 
 Order processing and status updates use [NIP-17](17.md) encrypted direct messages, with three event kinds serving different purposes:
 
 - Kind `14`: Regular communication between parties
   - General inquiries and responses
   - Order clarifications
-  - Subject can be order ID or empty
+  - Subject can be a human-readable descriptor, the original order ID, or empty
   
 - Kind `16`: Order processing and status. These messages include a `type` field that indicates the specific kind of message
   - Order creation and details. `type`: 1
-  - Payment requests. `type`: 2
+  - Payment receipts and requests. `type`: 2
   - Status updates. `type`: 3
   - Shipping information. `type`: 4
-  
-- Kind `17`: Payment receipts and verification
 
 Message direction is determined by the author, and `p` tag:
 - Buyer → Merchant: event author is the buyer, `p` tag contains merchant's pubkey
 - Merchant → Buyer: event author is the merchant, `p` tag contains buyer's pubkey
 
-The payment request flow can operate in two modes:
-1. Direct: Merchant processes requests manually. Payment request is initiated by the merchant
-2. Service-assisted: Merchant's payment service handles requests. Payment request is initiated by the buyer
+The payment flow can operate in three methods:
+1. Direct: Buyer immediately sends payment to merchant. Buyer waits for merchant's order confirmation.
+1. Manual: Merchant processes requests manually. Payment request is initiated by the merchant.
+2. Service-based: Merchant's preferred application handles requests. Payment requests can be handled by an automated service.
 
 ### Message Types
 #### 1. Order Creation
 Sent by buyer to initiate order process.
 
-**Content:** (Optional) Human readable order notes or special requests
+**Content:** (Optional) Human-readable order notes or special requests
 
 **Required tags:**
 - `p`: Merchant's public key
-- `subject`: Human-friendly subject line for order information
+- `subject`: "order-info"
 - `type`: Must be "1" to indicate order creation
 - `order`: Unique identifier for the order
 - `amount`: Total order amount in satoshis
@@ -456,7 +453,7 @@ Sent by buyer to initiate order process.
   "tags": [
     // Required tags
     ["p", "<merchant-pubkey>"],
-    ["subject", "<order-info subject>"],
+    ["subject", "order-info"],
     ["type", "1"],  // Order creation
     ["order", "<order-id>"],  // Unique order identifier
     ["amount", "<total-amount-in-sats>"],
@@ -475,32 +472,76 @@ Sent by buyer to initiate order process.
   "content": "Order notes or special requests"
 }
 ```
-#### 2. Payment Request
-There are two variants depending on payment processing mode: manual or automatic processing. After the buyer pays the payment request, they MUST send a payment receipt to the merchant using a kind:`17` dm.
+#### 2. Payment Processing
+There are three variants depending on payment processing method: direct, manual, or service-based processing. The merchant's payment preference MUST be respected. After the buyer pays, they MUST send a payment receipt to the merchant.
+
+##### Direct Processing (buyer → merchant)
+In this method, the buyer pay immediately and then sends their proof of payment to the merchant. The buyer waits for confirmation from the merchant and the order processing continues.
 
 ##### Manual Processing (merchant → buyer)
+In this method, the merchant manually initiates the payment by sending a payment request to the buyer. This requires that the merchant be online to process orders.
 
-In this mode, the merchant manually initiates the payment by sending a payment request to the buyer. This requires either:
-- The merchant being online to process requests, or
-- Having an automated system for processing payment requests, which can be run by the merchant or a service they rely on according to merchant preferences.
+##### Service-based Processing (buyer → merchant)
+
+In this method, the payment requests SHOULD be handled by the merchant's preferred service. This could be handled via an automated system for processing payment requests, which can be run by the merchant or a service they rely on according to merchant preferences.
 
 Important considerations:
-- Merchant shouldn't have a recommended application in their merchant's preferences
-- Final price may differ from the order creation time
+- The order creation by the buyer SHOULD initiate the process
+- Merchant SHOULD have a recommended application in their merchant's preferences
+- If automated, final price may differ from the order creation time
 - Merchants decide whether to honor original prices
 - Buyers can cancel orders if they don't agree with price changes
 
+#### a. Payment Receipt Event
 **Content:** (Optional) Human readable payment instructions and notes
 
 **Required tags:**
 - `p`: Buyer's public key
-- `subject`: Human-friendly subject line for order payment requests
+- `subject`: "order-receipt"
+- `type`: Must be "2" to indicate payment receipt
+- `order`: The unique order identifier from the original order
+- `amount`: Total payment amount in satoshis
+
+**Optional tags:**
+- `payment`: Payment method details, can appear multiple times for different options:
+  - Generic format: `["payment", "<medium>", "<medium-reference>", "<proof-of-payment>"]`
+  - Lightning format: `["payment", "lightning", "<invoice-reference>", "<preimage>"]`
+  - eCash format: `["payment", "ecash", "<token-proofs>", "<mint-url>"]`
+  - Bitcoin format: `["payment", "bitcoin", "<receiving-btc-address>", "<txn-id>"]`
+
+```jsonc
+{
+  "kind": 16,
+  "tags": [
+    // Required tags
+    ["p", "<merchant-pubkey>"],
+    ["subject", "order-receipt"],
+    ["type", "2"],  // Payment receipt
+    ["order", "<order-id>"],
+    ["amount", "<total-amount-in-sats>"],
+    
+    // Payment details
+    ["payment", "lightning", "<invoice-reference>", "<preimage>"],
+    ["payment", "ecash", "<token-proofs>", "<mint-url>"],
+    ["payment", "bitcoin", "<receiving-btc-address>", "<txn-id>"],
+  ],
+  "content": "Payment confirmation details"
+}
+```
+
+#### b. Payment Request Event
+**Content:** (Optional) Human readable payment instructions and notes
+
+**Required tags:**
+- `p`: Buyer's public key
+- `subject`: "order-payment"
 - `type`: Must be "2" to indicate payment request
 - `order`: The unique order identifier from the original order
 - `amount`: Total payment amount in satoshis
 
 **Optional tags:**
 - `payment`: Payment method details, can appear multiple times for different options:
+  - Generic format: `["payment", "<medium>", "<payment-request>"]`
   - Lightning format: `["payment", "lightning", "<bolt11-invoice or lud16>"]`
   - Bitcoin format: `["payment", "bitcoin", "<btc-address>"]`
   - eCash format: `["payment", "ecash", "<cashu-req>"]`
@@ -525,29 +566,6 @@ Important considerations:
 }
 ```
 
-##### Automatic Processing (buyer → merchant)
-In this mode, the merchant MUST set valid payment options in their kind:`0` event (such as `cashu` or `lud16`). The key difference is that the buyer initiates the payment request using information provided by the merchant. For merchants using `manual` payment preference, they SHOULD use [NIP-89](89.md) to specify their preferred payment processing service, which can then automatically handle payment requests on their behalf, as described in the merchant preferences section above.
-
-```jsonc
-{
-  "kind": 16,
-  "tags": [
-    // Required tags
-    ["p", "<merchant-pubkey>"],
-    ["subject", "order-payment"],
-    ["type", "2"],  // Payment request
-    ["order", "<order-id>"],
-    ["amount", "<total-amount-in-sats>"],
-    
-    // Payment details from service
-    ["payment", "lightning", "<bolt11-invoice|bolt12-offer>"],
-    ["payment", "bitcoin", "<btc-address>"],
-    ["payment", "ecash", "<cashu-req>"],
-  ],
-  "content": "Service-generated payment details"
-}
-```
-
 #### 3. Order Status Updates
 Once the merchant receives payment, they MUST update the status to "confirmed". Status updates can be sent as soon as a new order is acknowledged, initially setting the status to "pending". The "pending" status is optional and can be skipped, starting directly with "confirmed" once payment is received.
 
@@ -555,7 +573,7 @@ Once the merchant receives payment, they MUST update the status to "confirmed". 
 
 **Required tags:**
 - `p`: Buyer's or merchant's public key
-- `subject`: Human-friendly subject line for status updates
+- `subject`: "order-info"
 - `type`: Must be "3" to indicate status update
 - `order`: The original order identifier
 - `status`: Current order status:
@@ -608,7 +626,7 @@ Sent by merchant to provide delivery tracking and status information.
 
 **Required tags:**
 - `p`: Buyer's public key
-- `subject`: Human-friendly subject line for shipping updates
+- `subject`: "shipping-info"
 - `type`: Must be "4" to indicate shipping update
 - `order`: The original order identifier
 - `status`: Current shipping status:
@@ -657,54 +675,13 @@ Used for any order-related messages (Kind 14)
 }
 ```
 
-#### 6. Payment Receipt
-Sent by buyer to confirm payment completion. The receipt can include proof of payment from any payment system, including traditional fiat gateways.
-
-**Content:** (Optional) Human readable payment confirmation details
-
-**Required tags:**
-- `p`: Merchant's public key
-- `subject`: Human-friendly subject line for order receipt
-- `order`: The original order identifier
-- `payment`: Payment proof details (at least one required):
-  - Generic format: `["payment", "<medium>", "<medium-reference>", "<proof>"]`
-  - Common examples:
-    - Lightning: `["payment", "lightning", "<invoice>", "<preimage>"]`
-    - Bitcoin: `["payment", "bitcoin", "<address>", "<txid>"]`
-    - eCash: `["payment", "ecash", "<mint-url>", "<proof>"]`
-    - Fiat: `["payment", "fiat", "<some-id>", "<some-proof>"]`
-- `amount`: Payment amount
-
-```jsonc
-{
-  "kind": 17,
-  "tags": [
-    // Required tags
-    ["p", "<merchant-pubkey>"],
-    ["subject", "order-receipt"],
-    ["order", "<order-id>"],
-    
-    // Payment proof (one required)
-    ["payment", "<medium>", "<medium-reference>", "<proof>"],
-    ["payment", "lightning", "<invoice>", "<preimage>"],
-    ["payment", "bitcoin", "<address>", "<txid>"],
-    ["payment", "ecash", "<mint-url>", "<proof>"],
-    ["payment", "fiat", "<some-id>", "<some-proof>"],
-
-    // Metadata
-    ["amount", "<amount>"]
-  ],
-  "content": "Payment confirmation details"
-}
-```
-
 #### Notes
 1. Message Flow:
-   - Receipts should include verifiable proofs
+   - Receipts should include verifiable proofs of payment
 
 2. Payment Processing:
-   - Manual mode provides more flexibility
-   - Automatic mode enables faster processing and convenience
+   - Direct and manual method provides more flexibility
+   - Service-based method enables faster processing and convenience
    - Multiple payment options can be offered
 
 3. Status Tracking:
@@ -772,41 +749,43 @@ Total Score = (Thumb × 0.5) + (0.5 × (∑(Category Ratings) ÷ Number of Categ
 ### Payment Flow Details
 
 #### Payment Preferences
-Merchants can specify their payment preferences in their kind:`0` event using the `payment_preference` tag:
+Merchants can specify their payment preferences in their kind `0` event using the `payment_preference` tag:
 ```
-["payment_preference", "<manual | ecash | lud16>"]
+["payment_preference", "<service | ecash | lightning | bitcoin >"]
 ```
 
-If not present, it defaults to `manual`. The preferences are processed in this order of complexity:
-1. Manual (default): Merchant provides payment requests directly
-2. eCash: Ideally the merchant has a kind `10019` event to know what mint they prefer.
-  - If the `10019` event is not present, payment can be made by sending the token embedded directly in the order receipt message from a previously set mint (whether default or user selected); otherwise, the merchant's preferred mint SHOULD be used.
-3. Lightning: Requires `lud16` or related lightning fields in kind `0`
+If not present, it defaults to `service`. The preferences are processed in this order of complexity:
+1. Service (default): Merchant's preferred application SHOULD be respected. If none is set, the order and payment processing SHOULD be handled using the direct or manual payment processing methods.
+2. Ecash: Ideally the merchant has a kind `10019` event to know what mint they prefer
+  - If the `10019` event is not present, payment can be made by sending the token embedded directly in the order receipt message from a previously set mint (whether default or user selected); otherwise, the merchant's preferred mint SHOULD be used
+3. Lightning: Requires `lud16` in kind `0` or related Lightning fields
+4. Bitcoin: Requires a valid on-chain Bitcoin address set by the merchant
 
-#### Payment Processing Scenarios
+#### Payment Processing Methods
 
-1. **Manual Processing**
+1. **Direct Processing**
+   - Buyer initiates payment
+   - Buyer waits for merchant's order confirmation
+   - Order resolution is handled by both parties directly
+   - Service-based processing if `payment_preference` is `service` and the merchant has a recommended application
+
+2. **Manual Processing**
    - Merchant initiates payment request
-   - Used when no application is recommended or automatic preferences are set
    - Merchant must manually send payment requests
-   - Buyer waits for merchant's payment instructions
    - Merchants can have their own service that listens for new orders and then sends the payment request
+   - Service-based processing if `payment_preference` is `service` and the merchant has a recommended application
 
-2. **Automatic Processing**
-   - Buyer initiates payment request
-   - Requires a valid `payment_preference` in merchant's kind `0`
-   - Service-Based Processing processing if `payment_preference` is `manual` and the merchant have a recommended application
+3. **Service-based Processing**
+   - Merchant MUST set `payment_preference` to `service`
+   - Merchant SHOULD have a [NIP-89](89.md) kind `31989` event recommending their preferred service
+   - Buyers can immediately send or request payment using the service
+   - Service handles payment details and completion monitoring
    - Supports automatic payments via:
      - eCash tokens (locked to merchant's pubkey)
-     - Lightning (using merchant's `lud16` address)
-
-3. **Service-Based Processing**
-   - Merchant MUST set `payment_preference` to `manual`
-   - Merchant SHOULD have a [NIP-89](89.md) kind `31989` event recommending their preferred service
-   - Buyers can immediately request payment using the service
-   - Service handles payment details and completion monitoring
+     - Lightning (using merchant's kind `0` `lud16` address)
 
 For all scenarios:
+- Buyer MUST initiate order
 - Buyer MUST send payment receipt after completion
 - Message direction is determined by `p` tag
 - Merchant's [NIP-89](89.md) application preferences SHOULD be respected
