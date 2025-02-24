@@ -476,7 +476,7 @@ Sent by buyer to initiate order process.
 There are three variants depending on payment processing method: direct, manual, or service-based processing. The merchant's payment preference MUST be respected. After the buyer pays, they MUST send a payment receipt to the merchant.
 
 ##### Direct Processing (buyer → merchant)
-In this method, the buyer pay immediately and then sends their proof of payment to the merchant. The buyer waits for confirmation from the merchant and the order processing continues.
+In this method, the buyer pays immediately and then sends their proof of payment to the merchant. The buyer waits for confirmation from the merchant and the order processing continues.
 
 ##### Manual Processing (merchant → buyer)
 In this method, the merchant manually initiates the payment by sending a payment request to the buyer. This requires that the merchant be online to process orders.
