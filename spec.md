@@ -441,7 +441,7 @@ Sent by buyer to initiate order process.
 - `item`: Product reference in format "30402:<pubkey>:<d-tag>" with quantity. MAY appear multiple times
 
 **Optional tags:**
-- `shipping`: Reference to shipping option "30406:<pubkey>:<d-tag>"
+- `shipping_option`: Reference to shipping option "30406:<pubkey>:<d-tag>"
 - `address`: Shipping address details
 - `email`: Customer email for contact
 - `phone`: Customer phone number for contact
@@ -462,7 +462,7 @@ Sent by buyer to initiate order process.
     ["item", "30402:<pubkey>:<d-tag>", "<quantity>"],
     
     // Shipping details
-    ["shipping", "30406:<pubkey>:<d-tag>"],
+    ["shipping_option", "30406:<pubkey>:<d-tag>"],
     ["address", "<shipping-address>"],
     
     // Customer contact
