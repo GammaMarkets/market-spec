@@ -504,6 +504,7 @@ Important considerations:
   - Lightning format: `["payment", "lightning", "<bolt11-invoice or lud16>"]`
   - Bitcoin format: `["payment", "bitcoin", "<btc-address>"]`
   - eCash format: `["payment", "ecash", "<cashu-req>"]`
+- `expires`: Include if the payment format has a defined expiration time
 
 ```jsonc
 {
@@ -520,6 +521,7 @@ Important considerations:
     ["payment", "lightning", "<bolt11-invoice|lud16>"],
     ["payment", "bitcoin", "<btc-address>"],
     ["payment", "ecash", "<cashu-req>"],
+    ["expires", "<unix-timestamp>"],
   ],
   "content": "Payment instructions and notes"
 }
