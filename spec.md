@@ -445,7 +445,7 @@ Sent by buyer to initiate order process.
 
 **Optional tags:**
 - `shipping`: Reference to shipping option "30406:<pubkey>:<d-tag>"
-- `address`: Shipping address details
+- `address`: Shipping address details. Must be a JSON object string of the follow format: "{name, street1, street2, city, state, country, zip, note}"
 - `email`: Customer email for contact
 - `phone`: Customer phone number for contact
 - Other optional tags can be added with more details from the customer
