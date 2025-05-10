@@ -556,7 +556,7 @@ Once the merchant receives payment, they MUST update the status to "confirmed". 
 **Content:** (Optional) Human readable status update
 
 **Required tags:**
-- `p`: Buyer's or merchant's public key
+- `p`: Buyer's public key
 - `subject`: Human-friendly subject line for status updates
 - `type`: Must be "3" to indicate status update
 - `order`: The original order identifier
